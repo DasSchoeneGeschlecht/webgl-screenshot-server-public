@@ -14,18 +14,23 @@ app.post('/upload-screenshot', async (req, res) => {
 
         const buffer = Buffer.from(image, 'base64');
 
-        // Email credentials from environment variables
+        // GMX SMTP configuration
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
+            host: "mail.gmx.net",
+            port: 587,
+            secure: false, // GMX uses STARTTLS (not SSL)
             auth: {
-                user: process.env.EMAIL_USER, // set this in Render environment variables
-                pass: process.env.EMAIL_PASS  // set this in Render environment variables
+                user: process.env.EMAIL_USER, 
+                pass: process.env.EMAIL_PASS  
+            },
+            tls: {
+                rejectUnauthorized: false
             }
         });
 
         await transporter.sendMail({
             from: process.env.EMAIL_USER,
-            to: process.env.EMAIL_USER, // receive emails at the same address
+            to: process.env.EMAIL_USER, 
             subject: 'New Screenshot Uploaded',
             text: 'A new screenshot was uploaded from your game!',
             attachments: [{ filename, content: buffer }]
@@ -38,6 +43,6 @@ app.post('/upload-screenshot', async (req, res) => {
     }
 });
 
-// Listen on the port provided by Render or fallback to 3000
+// Render will set PORT
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
