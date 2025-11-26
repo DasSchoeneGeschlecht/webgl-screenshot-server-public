@@ -1,13 +1,23 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const { Resend } = require('resend');
 
 const app = express();
 
-// Accept large JSON payloads (important for screenshots)
+// Enable CORS for all origins (Unity WebGL requires this)
+app.use(cors());
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+    next();
+});
+
+// Accept large JSON payloads for screenshots
 app.use(bodyParser.json({ limit: '20mb' }));
 
-// Initialize Resend using your API key from Render
+// Resend email client
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.post('/upload-screenshot', async (req, res) => {
@@ -18,24 +28,21 @@ app.post('/upload-screenshot', async (req, res) => {
             return res.status(400).send('Missing image or filename');
         }
 
-        // Convert base64 → buffer file
         const buffer = Buffer.from(image, 'base64');
 
-        // Send email using Resend
-        const emailResponse = await resend.emails.send({
-            from: 'Screenshot Server <notifications@resend.dev>', 
-            to: process.env.TO_EMAIL, // who receives the email
+        await resend.emails.send({
+            from: 'Screenshot Server <notifications@resend.dev>',
+            to: process.env.TO_EMAIL,
             subject: 'New Screenshot Uploaded',
             text: 'A new screenshot was uploaded from your game!',
             attachments: [
                 {
-                    filename: filename,
+                    filename,
                     content: buffer
                 }
             ]
         });
 
-        console.log("Email sent:", emailResponse);
         res.send('Screenshot uploaded and emailed successfully!');
     } catch (err) {
         console.error("Email error:", err);
@@ -43,9 +50,6 @@ app.post('/upload-screenshot', async (req, res) => {
     }
 });
 
-// Render uses a dynamic port
+// For Render
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
